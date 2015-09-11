@@ -30,6 +30,6 @@ def fetch_url(url, id)
   end
 end
 
-(1000..10000).each do |id|
+(1..10000).each do |id|
   fetch_url(@baseurl, id)
 end
