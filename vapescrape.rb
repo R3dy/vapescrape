@@ -1,8 +1,12 @@
 #!/usr/bin/env ruby
-require 'net/https'
-require 'nokogiri'
-require 'pry'
-require 'optparse'
+begin
+  require 'net/https'
+  require 'nokogiri'
+  require 'pry'
+  require 'optparse'
+rescue
+  puts "error resolving dependencies, make sure to bundle install first"
+end
 
 @baseurl = "https://www.vapeabout.com/vape-store.php?id="
 @options = {}
@@ -22,9 +26,10 @@ def fetch_url(url, id)
       page = Nokogiri::HTML(response.body)
       return if page.title.nil?
       shop = page.css('div.shopinfo').css('span').map(&:text)
-      shop.each { |x| puts x.chomp + "\t" }
+      output = String.new
+      shop.each { |x| output << x.chomp + "\t".chomp }
+      puts output
     rescue
-      binding.pry
       return
     end
   end
