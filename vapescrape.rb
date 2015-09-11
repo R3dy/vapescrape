@@ -18,6 +18,7 @@ end
 args.parse!(ARGV)
 
 def fetch_url(url, id)
+  sleep(5)
   puts "trying #{url + id.to_s}" if @options[:verbose]
   uri = URI.parse(url + id.to_s)
   if uri.class == URI::HTTPS
