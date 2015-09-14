@@ -2,14 +2,17 @@
 begin
   require 'net/https'
   require 'nokogiri'
+  require 'thread/pool'
   require 'pry'
   require 'optparse'
 rescue
   puts "error resolving dependencies, make sure to bundle install first"
 end
 
-@baseurl = "https://www.vapeabout.com/vape-store.php?id="
+@urltop = "https://thevaporrater.com/page/"
+@urlbottom = "/?geodir_search=1&stype=gd_place&s=+&snear&sgeo_lat&sgeo_lon"
 @options = {}
+@threads = Thread.pool(5)
 args = OptionParser.new do |opts|
   opts.banner = "Vapescrape.rb VERSION: 0.1 - UPDATED: 9/11/2015\r\n"
   opts.banner += "Usage: ./vapescrape.rb > output.csv\r\n\r\n"
@@ -17,25 +20,42 @@ args = OptionParser.new do |opts|
 end
 args.parse!(ARGV)
 
-def fetch_url(url, id)
-  sleep(5)
-  puts "trying #{url + id.to_s}" if @options[:verbose]
-  uri = URI.parse(url + id.to_s)
+def fetch_url(id)
+  url = @urltop + id.to_s + @urlbottom
+  puts "trying #{url}" if @options[:verbose]
+  uri = URI.parse(url)
   if uri.class == URI::HTTPS
     begin
       response = Net::HTTP.get_response(uri)
       page = Nokogiri::HTML(response.body)
-      return if page.title.nil?
-      shop = page.css('div.shopinfo').css('span').map(&:text)
-      output = String.new
-      shop.each { |x| output << x.chomp + "\t".chomp }
-      puts output
-    rescue
+      page.css('div.geodir-content').each do |store|
+        newstore = Hash.new
+        newstore[:name] = store.css('a')[0].attr('title') if store.css('a')[0]
+        newstore[:street] = store.css('span')[1].text
+        newstore[:city] = store.css('span')[2].text
+        newstore[:state] = store.css('span')[3].text
+        newstore[:zip] = store.css('span')[4].text
+        newstore[:country] = store.css('span')[5].text
+        newstore[:phone] = store.css('div')[1].css('a').text
+        newstore[:website] = !store.css('div')[2].css('a').empty? ? store.css('div')[2].css('a').attr('href').text : ""
+        output = String.new
+        newstore.each { |x,v| output << v.chomp + "\t".chomp }
+        puts output
+      end
+    rescue StandardError => msg
+      puts "#{url}: #{msg}"
       return
     end
   end
 end
 
-(1..10000).each do |id|
-  fetch_url(@baseurl, id)
+def clean_threads
+  @threads.each { |thread| thread.join }
+  @threads.empty
+end
+
+402.times.each do |id|
+  @threads.process {
+    fetch_url(id+1)
+  }
 end
