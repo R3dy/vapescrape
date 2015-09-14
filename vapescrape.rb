@@ -2,7 +2,6 @@
 begin
   require 'net/https'
   require 'nokogiri'
-  require 'thread/pool'
   require 'pry'
   require 'optparse'
 rescue
@@ -12,7 +11,7 @@ end
 @urltop = "https://thevaporrater.com/page/"
 @urlbottom = "/?geodir_search=1&stype=gd_place&s=+&snear&sgeo_lat&sgeo_lon"
 @options = {}
-@threads = Thread.pool(5)
+@stores = []
 args = OptionParser.new do |opts|
   opts.banner = "Vapescrape.rb VERSION: 0.1 - UPDATED: 9/11/2015\r\n"
   opts.banner += "Usage: ./vapescrape.rb > output.csv\r\n\r\n"
@@ -40,7 +39,7 @@ def fetch_url(id)
         newstore[:website] = !store.css('div')[2].css('a').empty? ? store.css('div')[2].css('a').attr('href').text : ""
         output = String.new
         newstore.each { |x,v| output << v.chomp + "\t".chomp }
-        puts output
+        @stores << output
       end
     rescue StandardError => msg
       puts "#{url}: #{msg}"
@@ -49,13 +48,9 @@ def fetch_url(id)
   end
 end
 
-def clean_threads
-  @threads.each { |thread| thread.join }
-  @threads.empty
+402.times.each do |id|
+  fetch_url(id+1)
 end
 
-402.times.each do |id|
-  @threads.process {
-    fetch_url(id+1)
-  }
-end
+puts "Name:\tStreet:\tCity:\tState:\tZip:\tCountry:\tPhone:\tWebsite:"
+@stores.each { |s| puts s }
